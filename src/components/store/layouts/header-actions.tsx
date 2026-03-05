@@ -80,22 +80,30 @@ export default function HeaderActions({
 
       {/* Dropdown */}
       {dropdown && (
-        <div className="absolute right-0 mt-2 w-44 rounded-md border bg-white shadow-lg overflow-hidden">
+        <div className="absolute right-0 mt-2 w-48 rounded-md border bg-white shadow-lg overflow-hidden">
 
           <Link
-            href="/account"
+            href="/account/profile"
             onClick={() => setDropdown(false)}
             className="block px-4 py-2 hover:bg-gray-100"
           >
-            My Account
+            My Profile
           </Link>
 
           <Link
-            href="/orders"
+            href="/account/orders"
             onClick={() => setDropdown(false)}
             className="block px-4 py-2 hover:bg-gray-100"
           >
             Orders
+          </Link>
+
+          <Link
+            href="/account/addresses"
+            onClick={() => setDropdown(false)}
+            className="block px-4 py-2 hover:bg-gray-100"
+          >
+            Addresses
           </Link>
 
           <button

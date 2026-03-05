@@ -18,7 +18,25 @@ model User {
 
   sessions  Session[]
   otps      OTP[]
+
+  profile   CustomerProfile?   // 🔗 link to profile
 }
+
+model CustomerProfile {
+  id        String   @id @default(uuid())
+
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+
+  firstName String?
+  lastName  String?
+  gender    String?
+  dob       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 
 model OTP {
   id        String   @id @default(uuid())

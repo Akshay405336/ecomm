@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const failKey = FAIL_PREFIX + phone;
   const blockKey = BLOCK_PREFIX + phone;
 
-  // 1️⃣ Check if blocked
+  // 1️⃣ Check block
   const blocked = await redis.get(blockKey);
 
   if (blocked) {
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2️⃣ Get OTP from Redis
+  // 2️⃣ Get OTP
   const storedOTP = await redis.get(otpKey);
 
   if (!storedOTP) {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     const fails = await redis.incr(failKey);
 
     if (fails === 1) {
-      await redis.expire(failKey, 3600); // 1 hour window
+      await redis.expire(failKey, 3600);
     }
 
     if (fails >= FAIL_LIMIT) {
@@ -70,16 +70,20 @@ export async function POST(req: Request) {
   await redis.del(otpKey);
   await redis.del(failKey);
 
-  // 5️⃣ Find or create user
-  let user = await prisma.user.findUnique({
+  // 5️⃣ Create or get user + profile
+  const user = await prisma.user.upsert({
     where: { phone },
+    update: {},
+    create: {
+      phone,
+      profile: {
+        create: {}
+      }
+    },
+    include: {
+      profile: true
+    }
   });
-
-  if (!user) {
-    user = await prisma.user.create({
-      data: { phone },
-    });
-  }
 
   // 6️⃣ Create session
   const token = randomUUID();
@@ -98,6 +102,7 @@ export async function POST(req: Request) {
   res.cookies.set("customer_token", token, {
     httpOnly: true,
     path: "/",
+    maxAge: 60 * 60 * 24 * 7
   });
 
   return res;
