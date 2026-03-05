@@ -73,4 +73,32 @@ model Admin {
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  sessions     AdminSession[]
+  profile      AdminProfile?
+}
+
+model AdminProfile {
+  id        String   @id @default(uuid())
+
+  adminId   String   @unique
+  admin     Admin    @relation(fields: [adminId], references: [id])
+
+  firstName String?
+  lastName  String?
+  avatar    String?
+  phone     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminSession {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id])
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

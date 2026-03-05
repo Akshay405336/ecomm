@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/infrastructure/database/prisma";
 import { authenticator } from "otplib";
-import { generateToken } from "@/infrastructure/auth/jwt";
+import { randomUUID } from "crypto";
 
 authenticator.options = {
   step: 30,
@@ -50,15 +50,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const token = generateToken({
-      id: admin.id,
-      role: "admin",
+    // ✅ Create admin session
+    const token = randomUUID();
+
+    await prisma.adminSession.create({
+      data: {
+        token,
+        adminId: admin.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
     });
 
     const res = NextResponse.json({
       success: true,
     });
 
+    // ✅ Store session token
     res.cookies.set("admin_token", token, {
       httpOnly: true,
       path: "/",
@@ -67,6 +74,7 @@ export async function POST(req: Request) {
     });
 
     return res;
+
   } catch (error) {
     console.error("VERIFY TOTP ERROR:", error);
 
