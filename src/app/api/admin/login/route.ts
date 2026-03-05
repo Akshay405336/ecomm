@@ -1,62 +1,41 @@
 import { NextResponse } from "next/server";
-import { generateToken } from "@/infrastructure/auth/jwt";
+import { prisma } from "@/infrastructure/database/prisma";
+import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    console.log("LOGIN BODY:", body);
+  const { email, password } = await req.json();
 
-    const { email, password } = body;
+  if (!email || !password) {
+    return NextResponse.json(
+      { message: "Email and password required" },
+      { status: 400 }
+    );
+  }
 
-    if (!email || !password) {
-      console.log("Missing email or password");
+  const admin = await prisma.admin.findUnique({
+    where: { email },
+  });
 
-      return NextResponse.json(
-        { message: "Email and password required" },
-        { status: 400 }
-      );
-    }
-
-    // fake admin test
-    if (email === "admin@test.com" && password === "123456") {
-      console.log("Admin authenticated");
-
-      const token = generateToken({
-        email,
-        role: "admin",
-      });
-
-      console.log("Generated token:", token);
-
-      const res = NextResponse.json({
-        success: true,
-        message: "Login successful",
-      });
-
-      res.cookies.set("admin_token", token, {
-        httpOnly: true,
-        secure: false,
-        path: "/",
-        sameSite: "lax",
-      });
-
-      console.log("Cookie set: admin_token");
-
-      return res;
-    }
-
-    console.log("Invalid credentials");
-
+  if (!admin) {
     return NextResponse.json(
       { message: "Invalid credentials" },
       { status: 401 }
     );
-  } catch (error) {
-    console.error("LOGIN ERROR:", error);
+  }
 
+  const valid = await bcrypt.compare(password, admin.passwordHash);
+
+  if (!valid) {
     return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
+      { message: "Invalid credentials" },
+      { status: 401 }
     );
   }
+
+  // email + password correct → go to TOTP page
+  return NextResponse.json({
+    success: true,
+    requireTotp: true,
+    adminId: admin.id,
+  });
 }

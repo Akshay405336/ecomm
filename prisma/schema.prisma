@@ -42,3 +42,17 @@ model Session {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+model Admin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+
+  // TOTP
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
