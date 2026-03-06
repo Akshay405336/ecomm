@@ -10,12 +10,16 @@ type Props = {
   category: CategoryListItem
   onEdit: (category: CategoryListItem) => void
   onDelete: (category: CategoryListItem) => void
+  selected: boolean
+  onSelect: () => void
 }
 
 export default function SortableRow({
   category,
   onEdit,
-  onDelete
+  onDelete,
+  selected,
+  onSelect
 }: Props) {
 
   const {
@@ -37,6 +41,15 @@ export default function SortableRow({
       style={style}
       className="border-b"
     >
+
+      {/* SELECT CHECKBOX */}
+      <td className="p-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onSelect}
+        />
+      </td>
 
       {/* DRAG HANDLE */}
       <td

@@ -1,79 +1,97 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 
-import {
-  DndContext,
-  closestCenter,
-  DragEndEvent
-} from "@dnd-kit/core"
+import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
 
 import {
   SortableContext,
   verticalListSortingStrategy,
-  arrayMove
-} from "@dnd-kit/sortable"
+  arrayMove,
+} from "@dnd-kit/sortable";
 
-import { CategoryListItem } from "@/modules/categories/types/category.types"
+import { CategoryListItem } from "@/modules/categories/types/category.types";
 
-import { useCategories } from "../hooks/use-categories"
-import CategoryFormModal from "./category-form-modal"
-import CategoryDeleteDialog from "./category-delete-dialog"
-import SortableRow from "./sortable-row"
+import { useCategories } from "../hooks/use-categories";
+import CategoryFormModal from "./category-form-modal";
+import CategoryDeleteDialog from "./category-delete-dialog";
+import SortableRow from "./sortable-row";
 
 export default function CategoryTable() {
 
-  const { categories, loading, reload } = useCategories()
+  const { categories, loading, reload } = useCategories();
 
-  const [items, setItems] = useState<CategoryListItem[]>([])
+  const [items, setItems] = useState<CategoryListItem[]>([]);
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editCategory, setEditCategory] = useState<CategoryListItem | null>(null)
-  const [deleteCategory, setDeleteCategory] = useState<CategoryListItem | null>(null)
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editCategory, setEditCategory] = useState<CategoryListItem | null>(null);
+  const [deleteCategory, setDeleteCategory] = useState<CategoryListItem | null>(null);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   useEffect(() => {
-    setItems(categories)
-  }, [categories])
+    setItems(categories);
+  }, [categories]);
 
   async function handleDragEnd(event: DragEndEvent) {
 
-    const { active, over } = event
+    const { active, over } = event;
 
-    if (!over || active.id === over.id) return
+    if (!over || active.id === over.id) return;
 
-    const oldIndex = items.findIndex(i => i.id === active.id)
-    const newIndex = items.findIndex(i => i.id === over.id)
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
 
-    const newItems = arrayMove(items, oldIndex, newIndex)
+    const newItems = arrayMove(items, oldIndex, newIndex);
 
-    setItems(newItems)
+    setItems(newItems);
 
     try {
 
       await fetch("/api/admin/categories/sort", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           order: newItems.map((item, index) => ({
             id: item.id,
-            sortOrder: index + 1
-          }))
-        })
-      })
+            sortOrder: index + 1,
+          })),
+        }),
+      });
 
-      reload()
+      reload();
 
     } catch (err) {
+      console.error("Sort update failed", err);
+    }
 
-      console.error("Sort update failed", err)
+  }
 
+  function toggleSelect(id: string) {
+
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((i) => i !== id)
+        : [...prev, id]
+    );
+
+  }
+
+  function toggleSelectAll() {
+
+    if (selectedIds.length === items.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(items.map((i) => i.id));
     }
 
   }
 
   return (
+
     <div className="space-y-4">
 
       <div className="flex justify-between">
@@ -84,6 +102,15 @@ export default function CategoryTable() {
         >
           Add Category
         </button>
+
+        {selectedIds.length > 0 && (
+          <button
+            onClick={() => setBulkDeleteOpen(true)}
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Delete Selected ({selectedIds.length})
+          </button>
+        )}
 
       </div>
 
@@ -98,12 +125,25 @@ export default function CategoryTable() {
 
             <thead>
               <tr className="border-b text-sm text-gray-500">
+
+                <th className="p-3">
+                  <input
+                    type="checkbox"
+                    checked={
+                      items.length > 0 &&
+                      selectedIds.length === items.length
+                    }
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+
                 <th className="p-3">Sort</th>
                 <th className="p-3">Image</th>
                 <th>Name</th>
                 <th>Slug</th>
                 <th>Parent</th>
                 <th className="p-3">Actions</th>
+
               </tr>
             </thead>
 
@@ -111,7 +151,7 @@ export default function CategoryTable() {
 
               {loading && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-gray-500">
+                  <td colSpan={7} className="p-6 text-center text-gray-500">
                     Loading categories...
                   </td>
                 </tr>
@@ -119,7 +159,7 @@ export default function CategoryTable() {
 
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-gray-500">
+                  <td colSpan={7} className="p-6 text-center text-gray-500">
                     No categories found
                   </td>
                 </tr>
@@ -128,17 +168,21 @@ export default function CategoryTable() {
               {!loading && items.length > 0 && (
 
                 <SortableContext
-                  items={items.map(c => c.id)}
+                  items={items.map((c) => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
 
-                  {items.map(cat => (
+                  {items.map((cat) => (
+
                     <SortableRow
                       key={cat.id}
                       category={cat}
                       onEdit={setEditCategory}
                       onDelete={setDeleteCategory}
+                      selected={selectedIds.includes(cat.id)}
+                      onSelect={() => toggleSelect(cat.id)}
                     />
+
                   ))}
 
                 </SortableContext>
@@ -176,6 +220,18 @@ export default function CategoryTable() {
         />
       )}
 
+      {bulkDeleteOpen && (
+        <CategoryDeleteDialog
+          bulkIds={selectedIds}
+          onClose={() => setBulkDeleteOpen(false)}
+          onSuccess={() => {
+            setSelectedIds([]);
+            reload();
+          }}
+        />
+      )}
+
     </div>
-  )
+
+  );
 }

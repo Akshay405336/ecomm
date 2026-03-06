@@ -4,13 +4,15 @@ import { useState } from "react"
 import { Category } from "@/modules/categories/types/category.types"
 
 type Props = {
-  category: Category
+  category?: Category
+  bulkIds?: string[]
   onClose: () => void
   onSuccess: () => void
 }
 
 export default function CategoryDeleteDialog({
   category,
+  bulkIds,
   onClose,
   onSuccess
 }: Props) {
@@ -23,12 +25,41 @@ export default function CategoryDeleteDialog({
 
       setLoading(true)
 
-      const res = await fetch(
-        `/api/admin/categories/${category.id}`,
-        {
-          method: "DELETE"
-        }
-      )
+      let res: Response
+
+      // BULK DELETE
+      if (bulkIds && bulkIds.length > 0) {
+
+        res = await fetch(
+          "/api/admin/categories/bulk-delete",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ids: bulkIds
+            })
+          }
+        )
+
+      } 
+      
+      // SINGLE DELETE
+      else if (category) {
+
+        res = await fetch(
+          `/api/admin/categories/${category.id}`,
+          {
+            method: "DELETE"
+          }
+        )
+
+      } 
+      
+      else {
+        throw new Error("No category provided")
+      }
 
       if (!res.ok) {
         throw new Error("Failed to delete category")
@@ -43,7 +74,9 @@ export default function CategoryDeleteDialog({
       alert("Could not delete category")
 
     } finally {
+
       setLoading(false)
+
     }
 
   }
@@ -54,7 +87,13 @@ export default function CategoryDeleteDialog({
       <div className="bg-white p-6 rounded space-y-4 w-80">
 
         <p className="text-sm">
-          Delete <b>{category.name}</b>?
+
+          {bulkIds && bulkIds.length > 0 ? (
+            <>Delete <b>{bulkIds.length}</b> selected categories?</>
+          ) : (
+            <>Delete <b>{category?.name}</b>?</>
+          )}
+
         </p>
 
         <div className="flex gap-3 justify-end">
