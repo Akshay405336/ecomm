@@ -102,3 +102,32 @@ model AdminSession {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+
+model Category {
+  id          String   @id @default(uuid())
+
+  name        String
+  slug        String   @unique
+  description String?
+
+  image       String?   // category banner
+  icon        String?   // small icon
+
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+
+  parentId    String?
+  parent      Category?  @relation("CategoryParent", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryParent")
+
+  metaTitle       String?
+  metaDescription String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([slug])
+  @@index([isActive, sortOrder])
+}
