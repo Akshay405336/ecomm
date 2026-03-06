@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 export const CategorySchema = z.object({
+
   name: z
     .string()
     .min(2, "Category name must be at least 2 characters")
@@ -17,19 +18,18 @@ export const CategorySchema = z.object({
     .optional(),
 
   image: z
-    .string()
-    .refine(
-      (val) => val.startsWith("/") || val.startsWith("http"),
-      { message: "Image must be a valid path or URL" }
-    )
+    .union([
+      z.string().url(),   // remote images
+      z.string().startsWith("/") // local images
+    ])
+    .nullable()
     .optional(),
 
   icon: z
-    .string()
-    .refine(
-      (val) => val.startsWith("/") || val.startsWith("http"),
-      { message: "Icon must be a valid path or URL" }
-    )
+    .union([
+      z.string().url(),
+      z.string().startsWith("/")
+    ])
     .optional(),
 
   parentId: z
@@ -56,6 +56,7 @@ export const CategorySchema = z.object({
     .string()
     .max(160, "Meta description should be under 160 characters")
     .optional(),
+
 })
 
 export type CategoryInput = z.infer<typeof CategorySchema>

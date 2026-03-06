@@ -55,17 +55,17 @@ export type CreateCategoryInput = {
   name: string
   slug?: string
 
-  description?: string
-  image?: string
-  icon?: string
+  description?: string | null
+  image?: string | null
+  icon?: string | null
 
   parentId?: string | null
 
   sortOrder?: number
   isActive?: boolean
 
-  metaTitle?: string
-  metaDescription?: string
+  metaTitle?: string | null
+  metaDescription?: string | null
 }
 
 /**
@@ -75,15 +75,15 @@ export type UpdateCategoryInput = {
   name?: string
   slug?: string
 
-  description?: string
-  image?: string
-  icon?: string
+  description?: string | null
+  image?: string | null
+  icon?: string | null
 
   parentId?: string | null
 
   sortOrder?: number
   isActive?: boolean
 
-  metaTitle?: string
-  metaDescription?: string
+  metaTitle?: string | null
+  metaDescription?: string | null
 }

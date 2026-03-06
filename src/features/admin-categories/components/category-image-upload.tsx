@@ -15,7 +15,7 @@ export default function CategoryImageUpload({
 
   const [preview, setPreview] = useState<string | null>(initialImage ?? null)
 
-  // sync when editing different category
+  // update preview when editing another category
   useEffect(() => {
     setPreview(initialImage ?? null)
   }, [initialImage])
@@ -40,14 +40,14 @@ export default function CategoryImageUpload({
 
     setPreview(null)
 
-    // tell parent image was removed
+    // notify parent that image should be removed
     onChange(null, true)
   }
 
-  // cleanup blob URLs
+  // cleanup blob urls
   useEffect(() => {
     return () => {
-      if (preview?.startsWith("blob:")) {
+      if (preview && preview.startsWith("blob:")) {
         URL.revokeObjectURL(preview)
       }
     }
@@ -67,6 +67,7 @@ export default function CategoryImageUpload({
             src={preview}
             alt="Preview"
             fill
+            sizes="96px"
             className="object-cover rounded border"
           />
 

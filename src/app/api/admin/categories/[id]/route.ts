@@ -51,10 +51,7 @@ export async function PATCH(
     const admin = await getCurrentAdmin()
 
     if (!admin) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      )
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
     }
 
     const formData = await req.formData()
@@ -63,6 +60,8 @@ export async function PATCH(
     const description = formData.get("description") as string | null
     const parentIdRaw = formData.get("parentId")
     const sortOrderRaw = formData.get("sortOrder")
+
+    const removeImage = formData.get("removeImage") === "true"
 
     const parentId =
       parentIdRaw && parentIdRaw !== "null"
@@ -74,13 +73,37 @@ export async function PATCH(
 
     const file = formData.get("image") as File | null
 
-    let imagePath: string | undefined
+    const existingCategory = await categoryRepository.findById(id)
 
+    if (!existingCategory) {
+      return NextResponse.json(
+        { message: "Category not found" },
+        { status: 404 }
+      )
+    }
+
+    let imagePath: string | null | undefined = undefined
+
+    // REMOVE IMAGE
+    if (removeImage && existingCategory.image) {
+
+      const oldPath = path.join(
+        process.cwd(),
+        "public",
+        existingCategory.image
+      )
+
+      try {
+        await fs.unlink(oldPath)
+      } catch {}
+
+      imagePath = null
+    }
+
+    // REPLACE IMAGE
     if (file) {
 
-      const existingCategory = await categoryRepository.findById(id)
-
-      if (existingCategory?.image) {
+      if (existingCategory.image) {
 
         const oldPath = path.join(
           process.cwd(),
@@ -90,11 +113,7 @@ export async function PATCH(
 
         try {
           await fs.unlink(oldPath)
-          console.log("Old image deleted:", oldPath)
-        } catch {
-          console.log("Old image not found, skipping delete")
-        }
-
+        } catch {}
       }
 
       const bytes = await file.arrayBuffer()
@@ -121,14 +140,14 @@ export async function PATCH(
       ...(description !== null && { description }),
       ...(parentId !== undefined && { parentId }),
       ...(sortOrder !== undefined && { sortOrder }),
-      ...(imagePath && { image: imagePath })
+      ...(imagePath !== undefined && { image: imagePath })
     })
 
     return NextResponse.json(category)
 
   } catch (error) {
 
-    console.error("Update category failed:", error)
+    console.error(error)
 
     return NextResponse.json(
       { message: "Failed to update category" },
@@ -149,10 +168,30 @@ export async function DELETE(
     const admin = await getCurrentAdmin()
 
     if (!admin) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+    }
+
+    const category = await categoryRepository.findById(id)
+
+    if (!category) {
       return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
+        { message: "Category not found" },
+        { status: 404 }
       )
+    }
+
+    // delete image from disk
+    if (category.image) {
+
+      const imagePath = path.join(
+        process.cwd(),
+        "public",
+        category.image
+      )
+
+      try {
+        await fs.unlink(imagePath)
+      } catch {}
     }
 
     await deleteCategory(id)
@@ -161,7 +200,7 @@ export async function DELETE(
 
   } catch (error) {
 
-    console.error("Delete category failed:", error)
+    console.error(error)
 
     return NextResponse.json(
       { message: "Failed to delete category" },
