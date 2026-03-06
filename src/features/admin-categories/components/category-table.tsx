@@ -1,21 +1,77 @@
 "use client"
 
-import { useState } from "react"
-import Image from "next/image"
+import { useState, useEffect } from "react"
+
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent
+} from "@dnd-kit/core"
+
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove
+} from "@dnd-kit/sortable"
 
 import { CategoryListItem } from "@/modules/categories/types/category.types"
 
 import { useCategories } from "../hooks/use-categories"
 import CategoryFormModal from "./category-form-modal"
 import CategoryDeleteDialog from "./category-delete-dialog"
+import SortableRow from "./sortable-row"
 
 export default function CategoryTable() {
 
   const { categories, loading, reload } = useCategories()
 
+  const [items, setItems] = useState<CategoryListItem[]>([])
+
   const [createOpen, setCreateOpen] = useState(false)
   const [editCategory, setEditCategory] = useState<CategoryListItem | null>(null)
   const [deleteCategory, setDeleteCategory] = useState<CategoryListItem | null>(null)
+
+  useEffect(() => {
+    setItems(categories)
+  }, [categories])
+
+  async function handleDragEnd(event: DragEndEvent) {
+
+    const { active, over } = event
+
+    if (!over || active.id === over.id) return
+
+    const oldIndex = items.findIndex(i => i.id === active.id)
+    const newIndex = items.findIndex(i => i.id === over.id)
+
+    const newItems = arrayMove(items, oldIndex, newIndex)
+
+    setItems(newItems)
+
+    try {
+
+      await fetch("/api/admin/categories/sort", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          order: newItems.map((item, index) => ({
+            id: item.id,
+            sortOrder: index + 1
+          }))
+        })
+      })
+
+      reload()
+
+    } catch (err) {
+
+      console.error("Sort update failed", err)
+
+    }
+
+  }
 
   return (
     <div className="space-y-4">
@@ -33,91 +89,70 @@ export default function CategoryTable() {
 
       <div className="bg-white rounded shadow overflow-hidden">
 
-        <table className="w-full text-left">
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
 
-          <thead>
-            <tr className="border-b text-sm text-gray-500">
-              <th className="p-3">Image</th>
-              <th>Name</th>
-              <th>Slug</th>
-              <th>Parent</th>
-              <th className="p-3">Actions</th>
-            </tr>
-          </thead>
+          <table className="w-full text-left">
 
-          <tbody>
-
-            {loading && (
-              <tr>
-                <td colSpan={5} className="p-6 text-center text-gray-500">
-                  Loading categories...
-                </td>
+            <thead>
+              <tr className="border-b text-sm text-gray-500">
+                <th className="p-3">Sort</th>
+                <th className="p-3">Image</th>
+                <th>Name</th>
+                <th>Slug</th>
+                <th>Parent</th>
+                <th className="p-3">Actions</th>
               </tr>
-            )}
+            </thead>
 
-            {!loading && categories.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-6 text-center text-gray-500">
-                  No categories found
-                </td>
-              </tr>
-            )}
+            <tbody>
 
-            {!loading && categories.map((cat) => (
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-gray-500">
+                    Loading categories...
+                  </td>
+                </tr>
+              )}
 
-              <tr key={cat.id} className="border-b">
+              {!loading && items.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-gray-500">
+                    No categories found
+                  </td>
+                </tr>
+              )}
 
-                <td className="p-3">
-                  {cat.image && (
-                    <Image
-                      src={cat.image}
-                      alt={cat.name}
-                      width={40}
-                      height={40}
-                      className="object-cover rounded"
+              {!loading && items.length > 0 && (
+
+                <SortableContext
+                  items={items.map(c => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+
+                  {items.map(cat => (
+                    <SortableRow
+                      key={cat.id}
+                      category={cat}
+                      onEdit={setEditCategory}
+                      onDelete={setDeleteCategory}
                     />
-                  )}
-                </td>
+                  ))}
 
-                <td>{cat.name}</td>
+                </SortableContext>
 
-                <td className="text-gray-500">
-                  {cat.slug}
-                </td>
+              )}
 
-                <td className="text-gray-500">
-                  {cat.parent?.name ?? "-"}
-                </td>
+            </tbody>
 
-                <td className="space-x-3 p-3">
+          </table>
 
-                  <button
-                    onClick={() => setEditCategory(cat)}
-                    className="text-blue-600"
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => setDeleteCategory(cat)}
-                    className="text-red-500"
-                  >
-                    Delete
-                  </button>
-
-                </td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
+        </DndContext>
 
       </div>
 
-      {/* CREATE MODAL */}
       {createOpen && (
         <CategoryFormModal
           onClose={() => setCreateOpen(false)}
@@ -125,7 +160,6 @@ export default function CategoryTable() {
         />
       )}
 
-      {/* EDIT MODAL */}
       {editCategory && (
         <CategoryFormModal
           category={editCategory}
@@ -134,7 +168,6 @@ export default function CategoryTable() {
         />
       )}
 
-      {/* DELETE DIALOG */}
       {deleteCategory && (
         <CategoryDeleteDialog
           category={deleteCategory}

@@ -19,7 +19,6 @@ export const categoryService = {
       data.slug ??
       slugify(data.name, { lower: true, strict: true })
 
-    // check duplicate slug
     const existing = await categoryRepository.findBySlug(slug)
 
     if (existing) {
@@ -49,11 +48,13 @@ export const categoryService = {
 
     // slug uniqueness
     if (slug) {
+
       const existing = await categoryRepository.findBySlug(slug)
 
       if (existing && existing.id !== id) {
         throw new Error("Another category already uses this slug")
       }
+
     }
 
     // prevent self parent
@@ -63,6 +64,7 @@ export const categoryService = {
 
     // prevent circular nesting
     if (data.parentId) {
+
       const parent = await categoryRepository.findById(data.parentId)
 
       if (!parent) {
@@ -72,6 +74,7 @@ export const categoryService = {
       if (parent.parentId === id) {
         throw new Error("Circular category hierarchy detected")
       }
+
     }
 
     return categoryRepository.update(id, {

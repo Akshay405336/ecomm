@@ -84,11 +84,10 @@ export const categoryRepository = {
   // CREATE CATEGORY
   async create(data: CreateCategoryInput) {
 
-    const { parentId, slug, name, ...rest } = data
+    const { parentId, slug, name, sortOrder, ...rest } = data
 
     const safeSlug = slug ?? generateSlug(name)
 
-    // prevent duplicate slug
     const existing = await prisma.category.findUnique({
       where: { slug: safeSlug }
     })
@@ -97,11 +96,24 @@ export const categoryRepository = {
       throw new Error("Category with this slug already exists")
     }
 
+    const position = sortOrder ?? 1
+
+    // shift categories down
+    await prisma.category.updateMany({
+      where: {
+        sortOrder: { gte: position }
+      },
+      data: {
+        sortOrder: { increment: 1 }
+      }
+    })
+
     return prisma.category.create({
       data: {
         name,
         slug: safeSlug,
         parentId: parentId ?? null,
+        sortOrder: position,
         ...rest
       }
     })
@@ -110,7 +122,15 @@ export const categoryRepository = {
   // UPDATE CATEGORY
   async update(id: string, data: UpdateCategoryInput) {
 
-    const { parentId, slug, name, ...rest } = data
+    const category = await prisma.category.findUnique({
+      where: { id }
+    })
+
+    if (!category) {
+      throw new Error("Category not found")
+    }
+
+    const { parentId, slug, name, sortOrder, ...rest } = data
 
     let safeSlug = slug
 
@@ -131,6 +151,41 @@ export const categoryRepository = {
       }
     }
 
+    // HANDLE SORTING
+    if (sortOrder !== undefined && sortOrder !== category.sortOrder) {
+
+      if (sortOrder < category.sortOrder) {
+
+        await prisma.category.updateMany({
+          where: {
+            sortOrder: {
+              gte: sortOrder,
+              lt: category.sortOrder
+            }
+          },
+          data: {
+            sortOrder: { increment: 1 }
+          }
+        })
+
+      } else {
+
+        await prisma.category.updateMany({
+          where: {
+            sortOrder: {
+              gt: category.sortOrder,
+              lte: sortOrder
+            }
+          },
+          data: {
+            sortOrder: { decrement: 1 }
+          }
+        })
+
+      }
+
+    }
+
     return prisma.category.update({
       where: { id },
       data: {
@@ -141,15 +196,38 @@ export const categoryRepository = {
 
         ...(parentId !== undefined && {
           parentId: parentId ?? null
-        })
+        }),
+
+        ...(sortOrder !== undefined && { sortOrder })
       }
     })
   },
 
   // DELETE CATEGORY
   async delete(id: string) {
-    return prisma.category.delete({
+
+    const category = await prisma.category.findUnique({
       where: { id }
+    })
+
+    if (!category) {
+      throw new Error("Category not found")
+    }
+
+    const deletedPosition = category.sortOrder
+
+    await prisma.category.delete({
+      where: { id }
+    })
+
+    // close gap in sorting
+    await prisma.category.updateMany({
+      where: {
+        sortOrder: { gt: deletedPosition }
+      },
+      data: {
+        sortOrder: { decrement: 1 }
+      }
     })
   },
 
