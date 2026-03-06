@@ -7,6 +7,7 @@ import { useProducts } from "../hooks/useProducts"
 import { useCategories } from "@/features/admin-categories/hooks/use-categories"
 
 import ProductFormModal from "./product-form-modal"
+import BulkImportModal from "./bulk-import-modal"
 import ProductDeleteDialog from "./product-delete-dialog"
 import ProductRow from "./product-row"
 
@@ -21,6 +22,7 @@ export default function ProductsTable() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkImportOpen, setBulkImportOpen] = useState(false)
 
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("")
@@ -83,12 +85,23 @@ export default function ProductsTable() {
 
       <div className="flex justify-between items-center gap-4">
 
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Add Product
-        </button>
+        <div className="flex gap-2">
+
+  <button
+    onClick={() => setCreateOpen(true)}
+    className="bg-black text-white px-4 py-2 rounded"
+  >
+    Add Product
+  </button>
+
+  <button
+    onClick={() => setBulkImportOpen(true)}
+    className="bg-blue-600 text-white px-4 py-2 rounded"
+  >
+    Bulk Import
+  </button>
+
+</div>
 
         <div className="flex gap-3">
 
@@ -274,6 +287,13 @@ export default function ProductsTable() {
           }}
         />
       )}
+
+      {bulkImportOpen && (
+  <BulkImportModal
+    onClose={() => setBulkImportOpen(false)}
+    onSuccess={reload}
+  />
+)}
 
     </div>
 
